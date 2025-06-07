@@ -31,9 +31,12 @@ def translate_text(user_id, text):
     town_lang = translator.translate(text=f'Town',
                                      source_lang=target_lang,
                                      target_lang=source_lang)
+    target_lang = 'ru'
+    print(text)
+    print(town_lang)
     try:
         if target_lang == source_lang:
-            return text
+            return f'{town_lang} {text}'
         else:
             translation = translator.translate(text=f'{town_lang} {text}',
                                                source_lang=source_lang,

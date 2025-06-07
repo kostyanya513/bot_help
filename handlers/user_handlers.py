@@ -102,6 +102,7 @@ class FSMFillForm(StatesGroup):
     fill_change_medinput = State() # Состояние ожидания изменения вопроса медчасти
     fill_change_safety = State() # Состояние ожидания изменения вопроса безопасности пользователя
     fill_correct_psychological_support = State() # Состояние ожидания корректуры психологического состояния
+    fill_phone_list_return_main = State() # Состояние просмотра sos телефонов или возврата в главное меню
 
 
 
@@ -842,9 +843,9 @@ async def process_type_help(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 # Этот хэндлер будет срабатывать на нажатие кнопки НЕТ (шаг 5) при запросе в безопасности ли пользователь,
-# НАЗАД (шаг 6.2) из списка sos телефонов и SOS ПОМОЩЬ! (шаг 7) главного меню,
+# /
 # сохраняет в переменную safety и переводить бота в состояние ожидания выбора вида помощи (шаг 6)
-@router.callback_query(F.data.in_({'not_confirm', 'not_call', 'sos_help', 'back_change'}),
+@router.callback_query(F.data.in_({'not_confirm', 'not_call', 'back_change'}),
                        StateFilter(default_state,
                                    FSMFillForm.fill_security_confirmation,
                                    FSMFillForm.fill_phone_list,
@@ -858,10 +859,24 @@ async def process_choosing_type_help(callback: CallbackQuery, state: FSMContext)
     await state.set_state(FSMFillForm.fill_choosing_type_help)
     await callback.answer()
 
+# Этот хэндлер будет срабатывать на нажатие кнопки НАЗАД (шаг 6.2) и возвращать в главное меню (шаг 7)
+@router.callback_query(F.data.in_({'not_call'}),
+                       StateFilter(FSMFillForm.fill_phone_list_return_main))
+async def process_choosing_type_help(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer(text=LEXICON['type_help'],
+                                  reply_markup=create_type_help(),)
+    await callback.message.answer(f'{await state.get_state()}')
+    await state.clear()
+    await callback.message.answer(f'{await state.get_state()}')
+    await callback.answer()
+
+
+
+
 # Этот хэндлер будет срабатывать на нажатие кнопок ВЫЗВАТЬ ЭКСТРЕННУЮ ПОМОЩЬ (шаг 6) при выборе вида помощи,
-# ОБРАТИТЬСЯ В SOS (шаг 4.2) если нет местоположения и SOS ТЕЛЕФОНЫ (шаг 7) из меню безопасности,
+# ОБРАТИТЬСЯ В SOS (шаг 4.2) если нет местоположения,
 # предоставлять список телефонов, и переводить бота в состояние ожидания выбора действия (шаг 6.2)
-@router.callback_query(F.data.in_({'emergency_assistance', 'contact_SOS', 'sos_phones'}),
+@router.callback_query(F.data.in_({'emergency_assistance', 'contact_SOS'}),
                        StateFilter(default_state,
                                    FSMFillForm.fill_choosing_type_help))
 async def process_phone_list(callback: CallbackQuery, state: FSMContext):
@@ -871,7 +886,6 @@ async def process_phone_list(callback: CallbackQuery, state: FSMContext):
         country_translate = country_translate.split()
         country_translate = ' '.join(country_translate[1:])
         country_info = await country_get(country_translate)
-        print(11111111)
         if country_info:
             await callback.message.answer(text=f'{LEXICON['phone_list']}\n'
                                                f'Страна: {user_dict[chat_id]['country']}\n'
@@ -892,6 +906,41 @@ async def process_phone_list(callback: CallbackQuery, state: FSMContext):
         await state.clear()
     await state.set_state(FSMFillForm.fill_phone_list)
     await callback.answer()
+
+# Этот хэндлер будет срабатывать на нажатие кнопки SOS ТЕЛЕФОНЫ и SOS ПОМОЩ (шаг 7) из меню безопасности,
+# предоставлять список телефонов, и переводить бота в состояние ожидания выбора действия (шаг 6.2)
+@router.callback_query(F.data.in_({'sos_phones', 'sos_help'}),
+                       # StateFilter(default_state,
+                       #             FSMFillForm.fill_choosing_type_help)
+                       )
+async def process_phone_list(callback: CallbackQuery, state: FSMContext):
+    chat_id = callback.message.chat.id
+    try:
+        country_translate = translate_country(chat_id, user_dict[chat_id]['country']).strip(' .')
+        country_translate = country_translate.split()
+        country_translate = ' '.join(country_translate[1:])
+        country_info = await country_get(country_translate)
+        if country_info:
+            await callback.message.answer(text=f'{LEXICON['phone_list']}\n'
+                                               f'Страна: {user_dict[chat_id]['country']}\n'
+                                               f'Общий номер экстренных служб: {country_info['shared_number']}\n'
+                                               f'Полиция: {country_info['police']}\n'
+                                               f'Скорая помощь: {country_info['ambulance']}\n'
+                                               f'Пожарная служба: {country_info['fire_department']}\n'
+                                               f'Регион: {country_info['region']}\n'
+                                               f'Телефонный код: {country_info['phone_code']}\n'
+                                               f'Дополнительная информация: {country_info['information']}\n',
+                                          reply_markup=create_phone_list())
+        else:
+            await callback.message.answer(text=f'{LEXICON['phone_list_1']}\n',
+                                          reply_markup=create_phone_list())
+    except Exception:
+        await callback.message.answer(text=LEXICON['not_location'],
+                                      reply_markup=create_main_menu(), )
+        await state.clear()
+    await state.set_state(FSMFillForm.fill_phone_list_return_main)
+    await callback.answer()
+
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки ПСИХОЛОГИЧЕСКАЯ ПОДДЕРЖКА (шаг 6) при выборе вида помощи,
@@ -1101,7 +1150,8 @@ async def process_all_police_stations(callback: CallbackQuery, state: FSMContext
                                                                                 LEXICON['show_all_police_city']))
         await state.set_state(FSMFillForm.fill_all_police_stations)
         await callback.answer()
-    except Exception:
+    except Exception as e:
+        print(e)
         await callback.message.answer(text=LEXICON['repeat_main_menu'],
                                       reply_markup=create_main_menu())
         await state.clear()
