@@ -1,11 +1,22 @@
+"""
+Модуль other_handlers содержит обработчики сообщений
+для дополнительных команд и событий бота.
+"""
+from typing import Optional
+
 from aiogram import Router
 from aiogram.types import Message
 
 router = Router()
 
 
-# Этот хэндлер будет реагировать на любые сообщения пользователя,
-# не предусмотренные логикой работы бота
 @router.message()
 async def send_echo(message: Message):
-    await message.answer(f'Не разобрал команду! Повтори пожалуйста! {message.text}')
+    """
+    Отвечает на любые непредусмотренные сообщения пользователя.
+    Args:
+        message (Message): Входящее сообщение от пользователя.
+    """
+    text: Optional[str] = message.text or "<пустое сообщение>"
+    await message.answer(f'Не разобрал команду! '
+                         f'Повтори пожалуйста! {text}')

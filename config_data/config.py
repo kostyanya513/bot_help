@@ -49,9 +49,12 @@ class Config:
 
 def load_config(path: str | None = None) -> Config:
     """
-    Функция загружает конфигурацию из .env и возвращает заполненный экземпляр класса Config
+    Функция загружает конфигурацию из .env и возвращает
+
+    заполненный экземпляр класса Config
     Args:
-        path (str | None): Путь к файлу .env. Если None используется стандартный путь
+        path (str | None): Путь к файлу .env.
+        Если None используется стандартный путь
     Returns:
         Config: Экземпляр класса Config с заполненными параметрами из .env
     """
@@ -69,7 +72,10 @@ def load_config(path: str | None = None) -> Config:
     )
 
 
-def api_request(endpoint: str, params: Optional[dict[str, Any]] = None) -> requests.Response:
+def api_request(
+        endpoint: str,
+        params: Optional[dict[str, Any]] = None
+) -> requests.Response:
     """
     Функция выполняет GET-запрос к API с добавлением API-ключа в параметры
     Args:
@@ -89,7 +95,11 @@ def api_request(endpoint: str, params: Optional[dict[str, Any]] = None) -> reque
     )
 
 
-def get_coord(geocode: str, response_format: str = 'json', lang: str = 'ru_RU') -> Optional[Dict]:
+def get_coord(
+        geocode: str,
+        response_format: str = 'json',
+        lang: str = 'ru_RU'
+) -> Optional[Dict]:
     """
     Получает координаты по адресу с помощью геокодера.
     Args:
@@ -97,7 +107,8 @@ def get_coord(geocode: str, response_format: str = 'json', lang: str = 'ru_RU') 
         response_format (str): Формат ответа (по умолчанию 'json').
         lang (str): Язык ответа (по умолчанию 'ru_RU').
     Returns:
-        Optional[Dict]: Распарсенный JSON-ответ с координатами или None при ошибке
+        Optional[Dict]: Распарсенный JSON-ответ с координатами
+        или None при ошибке
     """
     response = api_request(f'{API_GEO}', params={
         'format': response_format,
