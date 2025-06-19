@@ -5,6 +5,8 @@ from typing import Optional, List
 
 import asyncpg  # type: ignore
 
+from states.states import FSMFillForm
+
 user_dict: dict[int, dict[str, str | int | bool]] = {}
 
 # Создаем словарь переменных
@@ -22,6 +24,60 @@ data_variable: dict[str, str] = {'sity': 'Город',
 
 # Хранение access_token в памяти (для примера)
 user_tokens: dict[int, str] = {}
+
+# Маппинг для смены полей
+CHANGE_FIELDS: dict[str, dict[str, str]] = {
+    'sity': {
+        'state': FSMFillForm.fill_change_sity,
+        'lexicon': 'enter_new_value_sity',
+        'key': 'sity',
+    },
+    'country': {
+        'state': FSMFillForm.fill_change_country,
+        'lexicon': 'enter_new_value_country',
+        'key': 'country',
+    },
+    'latitude': {
+        'state': FSMFillForm.fill_change_latitude,
+        'lexicon': 'enter_new_value_latitude',
+        'key': 'latitude',
+    },
+    'longitude': {
+        'state': FSMFillForm.fill_change_longitude,
+        'lexicon': 'enter_new_value_longitude',
+        'key': 'longitude',
+    },
+    'info': {
+        'state': FSMFillForm.fill_change_info,
+        'lexicon': 'enter_new_value_info',
+        'key': 'info',
+    },
+    'psyinput': {
+        'state': FSMFillForm.fill_change_psyinput,
+        'lexicon': 'enter_new_value_psyinput',
+        'key': 'psyinput',
+    },
+    'legalreason': {
+        'state': FSMFillForm.fill_change_legalreason,
+        'lexicon': 'enter_new_value_legalreason',
+        'key': 'legalreason',
+    },
+    'policeinput': {
+        'state': FSMFillForm.fill_change_policeinput,
+        'lexicon': 'enter_new_value_policeinput',
+        'key': 'policeinput',
+    },
+    'medinput': {
+        'state': FSMFillForm.fill_change_medinput,
+        'lexicon': 'enter_new_value_medinput',
+        'key': 'medinput',
+    },
+    'safety': {
+        'state': FSMFillForm.fill_change_safety,
+        'lexicon': 'enter_new_value_safety',
+        'key': 'safety',
+    },
+}
 
 
 class Database:
