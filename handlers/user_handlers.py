@@ -1,11 +1,10 @@
+import logging  # Импортируем модуль для ведения журналов
 from aiogram import F, Router
 from aiogram.filters import (Command,
                              CommandStart,
                              StateFilter)
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import (StatesGroup,
-                               State,
-                               default_state)
+from aiogram.fsm.state import default_state
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (CallbackQuery,
                            Message)
@@ -16,7 +15,8 @@ from database.methods import (country_get,
                               town_get_hospital,
                               town_get_help_center)
 from database.models import (user_dict,
-                             data_variable)
+                             data_variable,
+                             CHANGE_FIELDS)
 from keyboards.set_menu import (create_main_menu,
                                 create_return_to_main_menu,
                                 create_geo_location,
@@ -47,103 +47,13 @@ from lexicon.lexicon_ru import (LEXICON,
                                 LEXICON_DATA_CONFIRMATION)
 from utils.utils import (translate_country,
                          translate_text)
+from states.states import FSMFillForm
 
 router = Router()
 
 # Инициализируем хранилище (создаем экземпляр класса MemoryStorage)
 storage = MemoryStorage()
-
-
-# Создаем класс, наследуемый от StatesGroup, для группы состояний нашей FSM
-class FSMFillForm(StatesGroup):
-    # Создаем экземпляры класса State, последовательно
-    # перечисляя возможные состояния, в которых будет находиться
-    # бот в разные моменты взаимодействия с пользователем
-    # Состояние ожидания ввода страны при старте бота
-    fill_country = State()
-    # Состояние ожидания ввода города при старте бота
-    fill_town = State()
-    # Состояние ожидания выбора нужна помощь или нет
-    fill_need_help = State()
-    # Состояние ожидания запроса доступа к гео
-    fill_shar_geo = State()
-    # Состояние ожидания доступа к гео
-    fill_enter_geo = State()
-    # Состояние ожидания доступа к гео из главного меню
-    fill_enter_geo_main_menu = State()
-    # Состояние ожидания запроса к гео из главного меню
-    fill_shar_geo_main_menu = State()
-    # Состояние ожидания запроса к возврату из уточнения гео в главное меню
-    fill_return_shar_geo_main_menu = State()
-    # Состояние ожидания запроса в безопасности ли пользователь
-    fill_user_safe = State()
-    # Состояние ожидания подтверждения помощи поделиться геолокацией
-    fill_user_share_geo_bot = State()
-    # Состояние ожидания геопозиции из меню СКРЕПКА
-    fill_return_shar_geo_clip = State()
-    # Состояние ожидания включения геолокации
-    fill_user_share_geo_bot_map = State()
-    # Состояние ожидания выбора вида помощи пользователю
-    fill_choosing_type_help = State()
-    # Состояние ожидания ввода точек wifi и bluetooth
-    fill_points_wifi_bluetooth = State()
-    # Состояние ожидания ввода описания территории
-    fill_description_territory = State()
-    # Состояние ожидания ввода описания отправных данных
-    fill_time_point_departure = State()
-    # Состояние ожидания связи с экстренными службами
-    fill_contact_emergency_services = State()
-    # Состояние ожидания подтверждения безопасности после определения гео
-    fill_security_confirmation = State()
-    # Состояние ожидания подтверждения введенной информации
-    fill_information_verification = State()
-    # Состояние ожидания корректировки информации
-    fill_correct_information = State()
-    # Состояние ожидания выбора звонка с телеграм
-    fill_phone_list = State()
-    # Состояние ожидания выбора действия в меню полиции
-    fill_need_police = State()
-    # Состояние ожидания выбора действия в меню мед помощи
-    fill_need_medical_help = State()
-    # Состояние ожидания ввода основания в меню юр помощи
-    fill_legal_assistance = State()
-    # Состояние ожидания ввода описания псих состояния
-    fill_psycholog_support = State()
-    # Состояние ожидания выбора действия в меню центров помощи
-    fill_help_centers = State()
-    # Состояние ожидания выбора действия в меню списка всех участков полиции
-    fill_all_police_stations = State()
-    # Состояние ожидания ввода вопроса в меню полиции
-    fill_your_question_police = State()
-    # Состояние ожидания ввода вопроса в меню мед помощи
-    fill_your_question_medical = State()
-    # Состояние ожидания выбора действия в меню списка всех мед центров
-    fill_all_medical_center = State()
-    # Состояние ожидания изменения города пользователя
-    fill_change_sity = State()
-    # Состояние ожидания изменения страны пользователя
-    fill_change_country = State()
-    # Состояние ожидания изменения широты
-    fill_change_latitude = State()
-    # Состояние ожидания изменения долготы
-    fill_change_longitude = State()
-    # Состояние ожидания изменения информации о месте пребывания пользователя
-    fill_change_info = State()
-    # Состояние ожидания изменения информации о состоянии пользователя
-    fill_change_psyinput = State()
-    # Состояние ожидания изменения информации о легальности пользователя
-    fill_change_legalreason = State()
-    # Состояние ожидания изменения вопроса полиции
-    fill_change_policeinput = State()
-    # Состояние ожидания изменения вопроса медчасти
-    fill_change_medinput = State()
-    # Состояние ожидания изменения вопроса безопасности пользователя
-    fill_change_safety = State()
-    # Состояние ожидания корректуры психологического состояния
-    fill_correct_psychological_support = State()
-    # Состояние просмотра sos телефонов или возврата в главное меню
-    fill_phone_list_return_main = State()
-
+logger = logging.getLogger(__name__)
 
 # Этот хэндлер будет срабатывать на команду '/start'
 # и запускать стартовое меню (шаг 2)
@@ -241,236 +151,31 @@ async def process_change_data_button(callback: CallbackQuery):
     await callback.message.answer(text=LEXICON['no_data'],)
 
 
-# Этот хэндлер будет срабатывать на нажатие кнопки смены города пребывания
-@router.callback_query(F.data == 'sity')
-async def process_change_sity(callback: CallbackQuery,
-                              state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_sity'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_sity)
+# Универсальный callback-обработчик
+@router.callback_query(lambda c: c.data in CHANGE_FIELDS)
+async def process_change_field(callback: CallbackQuery, state: FSMContext):
+    field_call = callback.data
+    await callback.message.answer(
+        text=LEXICON[CHANGE_FIELDS[field_call]['lexicon']],
+        reply_markup=create_back_change()
+    )
+    await state.set_state(CHANGE_FIELDS[field_call]['state'])
     await callback.answer()
 
 
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_sity)
-async def process_change_user_data_sity(message: Message,
-                                        state: FSMContext):
-    user_dict[message.from_user.id]['sity'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие кнопки смены страны пребывания
-@router.callback_query(F.data == 'country')
-async def process_change_country(callback: CallbackQuery,
-                                 state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_country'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_country)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_country)
-async def process_change_user_data_country(message: Message,
-                                           state: FSMContext):
-    user_dict[message.from_user.id]['country'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие кнопки смены широты
-@router.callback_query(F.data == 'latitude')
-async def process_change_latitude(callback: CallbackQuery,
-                                  state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_latitude'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_latitude)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_latitude)
-async def process_change_user_data_latitude(message: Message,
-                                            state: FSMContext):
-    user_dict[message.from_user.id]['latitude'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие кнопки смены долготы
-@router.callback_query(F.data == 'longitude')
-async def process_change_longitude(callback: CallbackQuery,
-                                   state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_longitude'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_longitude)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_longitude)
-async def process_change_user_data_longitude(message: Message,
-                                             state: FSMContext):
-    user_dict[message.from_user.id]['longitude'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие
-# кнопки смены информации о месте пребывания пользователя
-@router.callback_query(F.data == 'info')
-async def process_change_info(callback: CallbackQuery,
-                              state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_info'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_info)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_info)
-async def process_change_user_data_info(message: Message,
-                                        state: FSMContext):
-    user_dict[message.from_user.id]['info'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие
-# кнопки смены информации о состоянии пользователя
-@router.callback_query(F.data == 'psyinput')
-async def process_change_psyinput(callback: CallbackQuery,
-                                  state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_psyinput'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_psyinput)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_psyinput)
-async def process_change_user_data_psyinput(message: Message,
-                                            state: FSMContext):
-    user_dict[message.from_user.id]['psyinput'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие кнопки смены легальности
-@router.callback_query(F.data == 'legalreason')
-async def process_change_legalreason(callback: CallbackQuery,
-                                     state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_legalreason'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_legalreason)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_legalreason)
-async def process_change_user_data_legalreason(message: Message,
-                                               state: FSMContext):
-    user_dict[message.from_user.id]['legalreason'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие кнопки смены вопроса полиции
-@router.callback_query(F.data == 'policeinput')
-async def process_change_policeinput(callback: CallbackQuery,
-                                     state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_policeinput'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_policeinput)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_policeinput)
-async def process_change_user_data_policeinput(message: Message,
-                                               state: FSMContext):
-    user_dict[message.from_user.id]['policeinput'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие кнопки смены вопроса медпомощи
-@router.callback_query(F.data == 'medinput')
-async def process_change_medinput(callback: CallbackQuery,
-                                  state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_medinput'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_medinput)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_medinput)
-async def process_change_user_data_medinput(message: Message,
-                                            state: FSMContext):
-    user_dict[message.from_user.id]['medinput'] = message.text
-    await message.answer(text=LEXICON['change_data'], )
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
-
-
-# Этот хэндлер будет срабатывать на нажатие кнопки смены безопасности
-@router.callback_query(F.data == 'safety')
-async def process_change_safety(callback: CallbackQuery,
-                                state: FSMContext):
-    await callback.message.answer(text=LEXICON['enter_new_value_safety'],
-                                  reply_markup=create_back_change())
-    await state.set_state(FSMFillForm.fill_change_safety)
-    await callback.answer()
-
-
-# Этот хэндлер будет срабатывать на изменение данных пользователя
-@router.message(FSMFillForm.fill_change_safety)
-async def process_change_user_data_safety(message: Message,
-                                          state: FSMContext):
-    user_dict[message.from_user.id]['safety'] = message.text
-    await message.answer(text=LEXICON['change_data'],)
-    for key, value in user_dict[message.from_user.id].items():
-        await message.answer(text=f"{data_variable[key]}: {value}\n", )
-    await message.answer(text=LEXICON['change'],
-                         reply_markup=create_variables(message.from_user.id))
-    await state.clear()
+# Универсальный message-обработчик
+for field, params in CHANGE_FIELDS.items():
+    @router.message(params['state'])
+    async def process_change_user_data_field(message: Message, state: FSMContext, field=field):
+        user_dict[message.from_user.id][CHANGE_FIELDS[field]['key']] = message.text
+        await message.answer(text=LEXICON['change_data'])
+        for key, value in user_dict[message.from_user.id].items():
+            await message.answer(text=f"{data_variable[key]}: {value}\n")
+        await message.answer(
+            text=LEXICON['change'],
+            reply_markup=create_variables(message.from_user.id)
+        )
+        await state.clear()
 
 
 # Этот хэндлер будет срабатывать на команду '/hide_bot'
@@ -578,9 +283,8 @@ async def handle_location(message: Message,
 
     user_id = message.from_user.id
     user_dict[user_id] = await state.get_data()
-
     try:
-        # Фермируем строку координат геокодера
+        # Формируем строку координат геокодера
         geocode_str = f"{user_dict[user_id]['longitude']},{user_dict[user_id]['latitude']}"
         res = get_coord(geocode=geocode_str)
         # Извлекаем описание места
@@ -593,7 +297,7 @@ async def handle_location(message: Message,
         # Формируем ответ пользователю
         answer_text = (
             f"Ваша страна: {user_dict[user_id]['country']}\n"
-            f"Ваш город: {user_dict[user_id]['city']}\n"
+            f"Ваш город: {user_dict[user_id]['sity']}\n"
             f"Ваши координаты:\n"
             f"Широта: {user_dict[user_id]['latitude']}\n"
             f"Долгота: {user_dict[user_id]['longitude']}"
@@ -602,13 +306,13 @@ async def handle_location(message: Message,
             text=answer_text,
             reply_markup=create_data_confirmation(),
         )
-    except KeyError as e:
+    except KeyError:
         # Обработка ошибок, если ключей нет в ответе геокодера
         await message.answer(text=LEXICON['not_location'],
                              reply_markup=create_main_menu(),)
     except Exception as e:
         # Логирование ошибки, если нужно
-        # logger.error(f"Ошибка при обработке геолокации: {e}")
+        logger.error(f"Ошибка при обработке геолокации: {e}")
         await message.answer(
             text="Произошла ошибка при обработке вашего местоположения. Попробуйте ещё раз.",
             reply_markup=create_main_menu(),
@@ -1063,9 +767,7 @@ async def process_back_to_main_menu(callback: CallbackQuery,
                                     state: FSMContext):
     await callback.message.answer(text=LEXICON['type_help'],
                                   reply_markup=create_type_help(),)
-    await callback.message.answer(f'{await state.get_state()}')
     await state.clear()
-    await callback.message.answer(f'{await state.get_state()}')
     await callback.answer()
 
 
