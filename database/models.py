@@ -138,13 +138,13 @@ class Database:
                                    service_type: str
                                    ) -> Optional[List[asyncpg.Record]]:
         """
-        Получить записи из таблиц police, hospital
+        Получить записи из таблиц police, hospitals
         или help_center по городу и стране.
         Args:
             town_id (str): Название города.
             country_id (str): Название страны.
             service_type (str): Тип сервиса
-                                ('police', 'hospital', 'help_center').
+                                ('police', 'hospitals', 'help_center').
         Returns:
             Список записей или None в случае ошибки.
         """
@@ -152,7 +152,7 @@ class Database:
             print("❌ Пул соединений не инициализирован")
             return None
 
-        allowed_services = {'police', 'hospital', 'help_center'}
+        allowed_services = {'police', 'hospitals', 'help_center'}
         if service_type not in allowed_services:
             print(f"❌ Недопустимый тип сервиса: {service_type}")
             return None
@@ -209,7 +209,7 @@ class Database:
             """
         return await self.fetch_record_by_town(town_id,
                                                country_id,
-                                               'hospital')
+                                               'hospitals')
 
     async def fetch_record_by_town_help_center(
             self,
