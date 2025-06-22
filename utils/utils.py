@@ -77,6 +77,7 @@ def translate_text(user_id: int, text: str) -> Union[str, None]:
             source_lang=intermediate_lang,
             target_lang=source_lang
         )
+
         if target_lang == source_lang:
             # Если язык пользователя совпадает с целевым (русским),
             # возвращаем с добавлением "Town"
@@ -142,6 +143,21 @@ async def get_translated_city(user_id: int) -> str:
     """
     city_name, _ = get_user_location_data(user_id)
     return translate_text(user_id, city_name).strip(' .')
+
+
+async def get_translated_country(user_id: int) -> str:
+    """
+    Получает название страны пользователя и переводит его.
+    Args:
+        user_id (int): ID пользователя.
+    Returns:
+        str: Переведённое название страны без пробелов и точек в конце.
+    """
+    _, country_name = get_user_location_data(user_id)
+
+    res = translate_country(user_id, country_name).strip(' .')
+    print('get_translated_country - ', res)
+    return res
 
 
 def build_telegraph_content(
