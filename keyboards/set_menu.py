@@ -40,7 +40,8 @@ from utils.utils import (get_user_location_data,
                          get_translated_city,
                          get_centers_data,
                          build_telegraph_content,
-                         create_telegraph_article_for_centers)
+                         create_telegraph_article_for_centers,
+                         get_translated_country)
 
 
 def create_main_menu() -> InlineKeyboardMarkup:
@@ -668,9 +669,12 @@ async def create_all_centers(
     city_name, country_name = get_user_location_data(user_id=user_id)
     # Переводим название города
     city_translated = await get_translated_city(user_id=user_id)
+    country_name = await get_translated_country(user_id=user_id)
+    town = ''.join(city_translated.split(' ')[1:])
+    country = ''.join(country_name.split(' ')[1:])
     police, hospitals, help_centers = await get_centers_data(
-        city_translated=city_translated,
-        country=country_name
+        city_translated=town,
+        country=country
     )
     # Формируем заголовок статьи
     title = f"{LEXICON['all_places']}\nГород: {city_name}"
