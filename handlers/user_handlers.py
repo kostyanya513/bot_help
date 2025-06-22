@@ -1027,7 +1027,7 @@ async def process_correct_information_psycholog(callback: CallbackQuery,
 async def process_help_centers(callback: CallbackQuery,
                                state: FSMContext):
     chat_id = callback.message.chat.id
-    if user_dict:
+    try:
         text_translate = translate_text(
             chat_id,
             user_dict[chat_id]['sity']
@@ -1040,7 +1040,6 @@ async def process_help_centers(callback: CallbackQuery,
         ).strip(' .')
         country_translate = country_translate.split()
         country_translate = ' '.join(country_translate[1:])
-        print(text_translate, '!', country_translate)
         town_info_help_center = await town_get_help_center(
             town=text_translate,
             country=country_translate
@@ -1063,13 +1062,14 @@ async def process_help_centers(callback: CallbackQuery,
             reply_markup=await create_all_centers(
                 chat_id,
                 callback.message.chat.full_name,
-                LEXICON['show_all_hospitals']
+                LEXICON['show_all_centers']
             ))
         await state.set_state(FSMFillForm.fill_help_centers)
         await callback.answer()
-    else:
-        await callback.message.answer(text=LEXICON['repeat_main_menu'],
-                                      reply_markup=create_main_menu())
+    except Exception as e:
+        print(e)
+        await callback.message.answer(text=LEXICON['data_development'],
+                                      reply_markup=create_type_help())
         await state.clear()
         await callback.answer()
 
@@ -1121,8 +1121,8 @@ async def process_all_police_stations(callback: CallbackQuery,
         await callback.answer()
     except Exception as e:
         print(e)
-        await callback.message.answer(text=LEXICON['repeat_main_menu'],
-                                      reply_markup=create_main_menu())
+        await callback.message.answer(text=LEXICON['data_development'],
+                                      reply_markup=create_type_help())
         await state.clear()
         await callback.answer()
 
@@ -1220,8 +1220,8 @@ async def process_all_medical_center(callback: CallbackQuery,
         await state.set_state(FSMFillForm.fill_all_medical_center)
         await callback.answer()
     except Exception:
-        await callback.message.answer(text=LEXICON['repeat_main_menu'],
-                                      reply_markup=create_main_menu())
+        await callback.message.answer(text=LEXICON['data_development'],
+                                      reply_markup=create_type_help())
         await state.clear()
         await callback.answer()
 
