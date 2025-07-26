@@ -114,6 +114,7 @@ async def process_come_main_menu(callback: CallbackQuery,
         await callback.message.answer(text=LEXICON['/start'],
                                       reply_markup=create_main_menu())
     await state.clear()
+    await callback.answer()
 
 
 # Этот хэндлер будет срабатывать на команду '/change_data'
@@ -149,6 +150,7 @@ async def process_change_data_button(callback: CallbackQuery):
         reply_markup=create_variables(callback.message.chat.id)
     )
     await callback.message.answer(text=LEXICON['no_data'],)
+    await callback.answer()
 
 
 # Универсальный callback-обработчик
