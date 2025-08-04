@@ -171,6 +171,21 @@ class Database:
             print(f"❌ Ошибка выполнения запроса: {e}")
             return None
 
+    async def fetch_record_country_cod(self,country_id: str):
+        if not self.pool:
+            print("❌ Пул соединений не инициализирован")
+            return None
+        try:
+            async with self.pool.acquire() as conn:
+                query = ("SELECT country_code FROM sos_phones"
+                         " WHERE LOWER(country) = LOWER($1);")
+                record = await conn.fetch(query, country_id)
+                return record
+        except Exception as e:
+            print(f"❌ Ошибка выполнения запроса: {e}")
+            return None
+
+
     async def fetch_record_by_town_police(
             self,
             town_id: str,
