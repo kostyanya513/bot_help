@@ -5,6 +5,7 @@
 """
 import os
 from typing import Dict, Optional, Any
+import aiohttp
 # импортируем декоратор, который упрощает создание классов
 from dataclasses import dataclass
 
@@ -24,6 +25,8 @@ API_GEO = 'https://geocode-maps.yandex.ru/v1'
 API_TRANSLATE = "https://translate.api.cloud.yandex.net/translate/v2/translate"
 # Адрес база данных POSTGRESQL
 DATABASE_URL = os.getenv("DATABASE_URL")
+# API mymemory переводчика
+API_MYMEM = "https://api.mymemory.translated.net/get"
 
 
 @dataclass
@@ -119,33 +122,62 @@ def get_coord(
     return response.json()
 
 
-def translate_text(text: str, target_language: str) -> str:
-    """
-    Переводит текст на указанный язык с помощью Yandex Cloud Translate API.
-    Args:
-        text (str): Текст для перевода.
-        target_language (str): Код целевого языка (например, 'ru', 'en')
-    Returns:
-         str: Переведенный текст или сообщение об ошибке.
-    """
-    url = "https://translate.api.cloud.yandex.net/translate/v2/translate"
-    headers = {"Authorization": f"Bearer {KEY_TRANSLATE}"}
-    data = {
-        "folder_id": FOLDER_ID,
-        "texts": [text],
-        "targetLanguageCode": target_language,
+# def translate_text(text: str, target_language: str) -> str:
+#     """
+#     Переводит текст на указанный язык с помощью Yandex Cloud Translate API.
+#     Args:
+#         text (str): Текст для перевода.
+#         target_language (str): Код целевого языка (например, 'ru', 'en')
+#     Returns:
+#          str: Переведенный текст или сообщение об ошибке.
+#     """
+#     url = "https://translate.api.cloud.yandex.net/translate/v2/translate"
+#     headers = {"Authorization": f"Bearer {KEY_TRANSLATE}"}
+#     data = {
+#         "folder_id": FOLDER_ID,
+#         "texts": [text],
+#         "targetLanguageCode": target_language,
+#     }
+#     try:
+#         response = requests.post(url, json=data, headers=headers, timeout=10)
+#         response.raise_for_status()  # Проверка на ошибки HTTP
+#         result = response.json()
+#         if "translations" in result and len(result["translations"]) > 0:
+#             return result["translations"][0]["text"]
+#         print(f"Ошибка в ответе API: {result}")
+#         return "Ошибка перевода: Не удалось получить результат"
+#     except requests.exceptions.RequestException as e:
+#         print(f"Ошибка при запросе к API: {e}")
+#         return "Ошибка перевода: Проблемы с запросом"
+#     except KeyError as e:
+#         print(f"Ошибка ключа в ответе API: {e}")
+#         return "Ошибка перевода: Неверный формат ответа"
+
+
+# async def translate_text(text: str, source_lang, target_lang) -> str:
+#     url = API_MYMEM
+#     params = {
+#         "q": text,
+#         "langpair": f"{source_lang}|{target_lang}"
+#     }
+#     async with aiohttp.ClientSession() as session:
+#         async with session.get(url, params=params) as resp:
+#             if resp.status == 200:
+#                 data = await resp.json()
+#                 return data.get("responseData", {}).get("translatedText", "Ошибка в ответе API")
+#             else:
+#                 return f"Ошибка запроса, код: {resp.status}"
+
+async def translate_text(text: str, source_lang, target_lang) -> str:
+    url = API_MYMEM
+    params = {
+        "q": text,
+        "langpair": f"{source_lang}|{target_lang}"
     }
-    try:
-        response = requests.post(url, json=data, headers=headers, timeout=10)
-        response.raise_for_status()  # Проверка на ошибки HTTP
-        result = response.json()
-        if "translations" in result and len(result["translations"]) > 0:
-            return result["translations"][0]["text"]
-        print(f"Ошибка в ответе API: {result}")
-        return "Ошибка перевода: Не удалось получить результат"
-    except requests.exceptions.RequestException as e:
-        print(f"Ошибка при запросе к API: {e}")
-        return "Ошибка перевода: Проблемы с запросом"
-    except KeyError as e:
-        print(f"Ошибка ключа в ответе API: {e}")
-        return "Ошибка перевода: Неверный формат ответа"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data.get("responseData", {}).get("translatedText", "Ошибка в ответе API")
+            else:
+                return f"Ошибка запроса, код: {resp.status}"
