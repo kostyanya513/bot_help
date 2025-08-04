@@ -670,21 +670,20 @@ async def create_all_centers(
     # Переводим название города
     city_translated = await get_translated_city(user_id=user_id)
     country_name = await get_translated_country(user_id=user_id)
-    town = ''.join(city_translated.split(' ')[1:])
-    country = ''.join(country_name.split(' ')[1:])
     police, hospitals, help_centers = await get_centers_data(
-        city_translated=town,
-        country=country
+        city_translated,
+        country_name
     )
+    # Фильтруем непустые данные
+    centers_data = {}
+    centers_data['police'] = police or None
+    centers_data['hospitals'] = hospitals or None
+    centers_data['help_centers'] = help_centers or None
     # Формируем заголовок статьи
     title = f"{LEXICON['all_places']}\nГород: {city_name}"
     author = user_author or "Автор"
     # Формируем структуру для Telegraph API
-    content = build_telegraph_content(
-        police=police,
-        hospitals=hospitals,
-        help_centers=help_centers
-    )
+    content = build_telegraph_content(**centers_data)
     # Создаём статью
     url_telegraph = await create_telegraph_article_for_centers(
         user_id=user_id,
@@ -718,14 +717,15 @@ def create_variables(from_id: Union[int, str]) -> InlineKeyboardMarkup:
     buttons: list[InlineKeyboardButton] = []
     # Заполняем список кнопками из аргументов
     user_data = user_dict.get(from_id, {})
-    for text, _ in user_data.items():
-        if text != 'country_cod':
-            buttons.append(InlineKeyboardButton(
-                text=data_variable.get(text, text),
-                callback_data=text
-            ))
+    for key, value in data_variable.items():
+        if key in ['latitude', 'longitude', 'info', 'country_cod']:
+            continue
+        buttons.append(InlineKeyboardButton(
+                text=data_variable[key],
+                callback_data=key
+        ))
     # Распаковываем список с кнопками в билдер методом row c параметром width
-    kb_builder.row(*buttons, width=1)
+    kb_builder.row(*buttons, width=2)
     kb_builder.row(InlineKeyboardButton(
             text='Главное меню',
             callback_data='return_main_menu'
