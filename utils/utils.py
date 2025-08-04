@@ -15,9 +15,11 @@ from typing import (Union,
 from telegraph import Telegraph
 from mymemopy.translator import MyMemoryTranslate
 
+from config_data.config import translate_text
 from database.methods import (town_get_police,
                               town_get_hospital,
-                              town_get_help_center)
+                              town_get_help_center,
+                              translate_country_cod,)
 from database.models import (user_dict,
                              user_tokens)
 
@@ -26,7 +28,7 @@ from database.models import (user_dict,
 translator = MyMemoryTranslate()
 
 
-def translate_country(user_id: int, text: str) -> Union[str, None]:
+async def translate_country(user_id: int, text: str):
     """
     Переводит название страны на английский язык.
     Args:
@@ -38,14 +40,8 @@ def translate_country(user_id: int, text: str) -> Union[str, None]:
     try:
         source_lang = user_dict[user_id]['country_cod']
         target_lang = 'en'
-        # Перевод слова "Country" на язык пользователя
-        country_lang = translator.translate(
-            text='Country',
-            source_lang='en',
-            target_lang=source_lang)
-        # Перевод исходного текста с добавлением перевода слова "Country"
-        translation = translator.translate(
-            text=f'{country_lang} {text}',
+        translation = await translate_text(
+            text=text,
             source_lang=source_lang,
             target_lang=target_lang
         )
@@ -57,35 +53,27 @@ def translate_country(user_id: int, text: str) -> Union[str, None]:
 
 
 # Функция для перевода текста на язык пользователя
-def translate_text(user_id: int, text: str) -> Union[str, None]:
+async def translate_town(user_id: int, town: str, country: str):
     """
-    Переводит текст на язык пользователя, добавляя слово "Town"
-    на целевом языке.
+    Переводит текст на язык пользователя.
     Args:
         user_id (int): Идентификатор пользователя.
-        text (str): Исходный текст.
+        town (str): Город на языке пользователя.
     Returns:
         str: Переведённый текст или сообщение об ошибке.
     """
     try:
         source_lang = user_dict[user_id]['country_cod']  # Язык пользователя
-        intermediate_lang = 'en'  # Язык для перевода слова "Town"
-        target_lang = 'ru'  # Язык, на который нужно перевести текст
-        # Перевод слова "Town" с английского на язык пользователя
-        town_lang = translator.translate(
-            text='Town',
-            source_lang=intermediate_lang,
-            target_lang=source_lang
-        )
-
+        target_lang = await translate_country_cod(country)  # Язык, на который нужно перевести текст
+        target_lang = target_lang[0]['country_code']
         if target_lang == source_lang:
             # Если язык пользователя совпадает с целевым (русским),
             # возвращаем с добавлением "Town"
-            return f'{town_lang} {text}'
-        translation = translator.translate(
-            text=f'{town_lang} {text}',
+            return town
+        translation = await translate_text(
+            text=town,
             source_lang=source_lang,
-            target_lang='sr'
+            target_lang=target_lang
         )
         return translation
     except KeyError:
@@ -94,14 +82,39 @@ def translate_text(user_id: int, text: str) -> Union[str, None]:
         return f"Ошибка перевода: {e}"
 
 
+async def get_translated_city(user_id: int) -> str:
+    """
+    Получает название города пользователя и переводит его.
+    Args:
+        user_id (int): ID пользователя.
+    Returns:
+        str: Переведённое название города без пробелов и точек в конце.
+    """
+    city_name, _ = get_user_location_data(user_id)
+    res = (await translate_town(user_id, city_name)).strip(' .')
+    return res
+
+
+async def get_translated_country(user_id: int) -> str:
+    """
+    Получает название страны пользователя и переводит его.
+    Args:
+        user_id (int): ID пользователя.
+    Returns:
+        str: Переведённое название страны без пробелов и точек в конце.
+    """
+    _, country_name = get_user_location_data(user_id)
+    res = (await translate_country(user_id, country_name)).strip(' .')
+    return res
+
+
 async def get_or_create_telegraph_token(user_id: int) -> str:
     """
-    Получаем или создаём access_token для пользователя.
+    Получает или создаёт access_token для пользователя.
     В реальном приложении сохраняйте токен в БД.
     """
     if user_id in user_tokens:
         return user_tokens[user_id]
-
     telegraph = Telegraph()
     response = telegraph.create_account(short_name=f"user_{user_id}")
     access_token = response['access_token']
@@ -131,33 +144,6 @@ async def create_telegraph_article(
                                      author_name=author,
                                      content=content)
     return response['url']
-
-
-async def get_translated_city(user_id: int) -> str:
-    """
-    Получает название города пользователя и переводит его.
-    Args:
-        user_id (int): ID пользователя.
-    Returns:
-        str: Переведённое название города без пробелов и точек в конце.
-    """
-    city_name, _ = get_user_location_data(user_id)
-    return translate_text(user_id, city_name).strip(' .')
-
-
-async def get_translated_country(user_id: int) -> str:
-    """
-    Получает название страны пользователя и переводит его.
-    Args:
-        user_id (int): ID пользователя.
-    Returns:
-        str: Переведённое название страны без пробелов и точек в конце.
-    """
-    _, country_name = get_user_location_data(user_id)
-
-    res = translate_country(user_id, country_name).strip(' .')
-    print('get_translated_country - ', res)
-    return res
 
 
 def build_telegraph_content(
