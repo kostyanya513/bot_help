@@ -36,7 +36,7 @@ async def country_get(country: str) -> Union[Dict, str]:
 async def town_get_police(
         town: str,
         country: str
-) -> Union[List[Dict], Dict]:
+):
     """
     Асинхронная функция.
     Получает записи полиции по городу и стране.
@@ -51,7 +51,7 @@ async def town_get_police(
         list_of_dicts = [dict(record) for record in records]
         if list_of_dicts:
             return list_of_dicts
-        return {"error": "Запись не найдена."}
+        return None
     except Exception as e:
         logger.error("Ошибка в обработчике: %s", e)
         raise
@@ -101,7 +101,18 @@ async def town_get_help_center(
             return list_of_dicts
         return {"error": "Запись не найдена."}
     except Exception as e:
-        logger.error("Ошибка в обработчике: %s", e)
+        logger.error("Ошибка в обработчике town_get_help_center: %s", e)
+        raise
+
+async def translate_country_cod(country):
+    try:
+        records = await db.fetch_record_country_cod(country)
+        list_of_dicts = [dict(record) for record in records]
+        if list_of_dicts:
+            return list_of_dicts
+        return None
+    except Exception as e:
+        logger.error("Ошибка в обработчике translate_country_cod: %s", e)
         raise
 
 
