@@ -46,7 +46,7 @@ from keyboards.set_menu import (create_main_menu,
 from lexicon.lexicon_ru import (LEXICON,
                                 LEXICON_DATA_CONFIRMATION)
 from utils.utils import (translate_country,
-                         translate_text)
+                         translate_town)
 from states.states import FSMFillForm
 
 router = Router()
@@ -124,8 +124,11 @@ async def process_change_data(message: Message):
     # Формирование сообщения из словаря
     try:
         await message.answer(text=LEXICON['change_data'],)
-        for key, value in user_dict[message.from_user.id].items():
-            await message.answer(text=f"{data_variable[key]}: {value}\n",)
+        for key, value in data_variable.items():
+            if key in ['latitude', 'longitude', 'info', 'country_cod']:
+                continue
+            record = user_dict[message.from_user.id].get(key, LEXICON['no_data_available'])
+            await message.answer(text=f"{value}: {record}\n",)
         await message.answer(
             text=LEXICON['change'],
             reply_markup=create_variables(message.from_user.id)
@@ -143,8 +146,11 @@ async def process_change_data(message: Message):
 async def process_change_data_button(callback: CallbackQuery):
     # Формирование сообщения из словаря
     await callback.message.answer(text=LEXICON['change_data'],)
-    for key, value in user_dict[callback.message.chat.id].items():
-        await callback.message.answer(text=f"{data_variable[key]}: {value}\n",)
+    for key, value in data_variable.items():
+        if key in ['latitude', 'longitude', 'info', 'country_cod']:
+            continue
+        record = user_dict[callback.message.from_user.id].get(key, LEXICON['no_data_available'])
+        await callback.message.answer(text=f"{value}: {record}\n", )
     await callback.message.answer(
         text=LEXICON['change'],
         reply_markup=create_variables(callback.message.chat.id)
@@ -677,7 +683,7 @@ async def process_repeat_main_menu(callback: CallbackQuery,
 # Этот хэндлер будет срабатывать, когда местоположение не определено,
 # предлагает (шаг 4.2) заново определить местоположение,
 # обратиться в SOS или пропустить определение местоположение
-@router.callback_query(F.data.in_({'not_share_location', 'another_services'}),
+@router.callback_query(F.data.in_({'not_share_location', 'another_services', 'not_call'}),
                        StateFilter(
                            default_state,
                            FSMFillForm.fill_shar_geo,
@@ -741,10 +747,11 @@ async def process_type_help(callback: CallbackQuery,
     await callback.answer()
 
 
-# Этот хэндлер будет срабатывать на нажатие кнопки НЕТ (шаг 5)
-# при запросе в безопасности ли пользователь, сохраняет в переменную safety
+# Этот хэндлер будет срабатывать на нажатие кнопок НЕТ (шаг 5)
+# при запросе в безопасности ли пользователь,
+# SOS ПОМОЩЬ (шаг 7), сохраняет в переменную safety
 # и переводить бота в состояние ожидания выбора вида помощи (шаг 6)
-@router.callback_query(F.data.in_({'not_confirm', 'not_call', 'back_change'}),
+@router.callback_query(F.data.in_({'not_confirm', 'not_call', 'back_change', 'sos_help'}),
                        StateFilter(default_state,
                                    FSMFillForm.fill_security_confirmation,
                                    FSMFillForm.fill_phone_list,
@@ -767,6 +774,8 @@ async def process_choosing_type_help(callback: CallbackQuery,
                        StateFilter(FSMFillForm.fill_phone_list_return_main))
 async def process_back_to_main_menu(callback: CallbackQuery,
                                     state: FSMContext):
+    current_state = await state.get_state()
+    await callback.message.answer(f"Состояние есть гео: {current_state}")
     await callback.message.answer(text=LEXICON['type_help'],
                                   reply_markup=create_type_help(),)
     await state.clear()
@@ -783,37 +792,37 @@ async def process_back_to_main_menu(callback: CallbackQuery,
 async def process_phone_list_help_menu(callback: CallbackQuery,
                                        state: FSMContext):
     chat_id = callback.message.chat.id
+    current_state = await state.get_state()
+    await callback.message.answer(f"Состояние в начале: {current_state}")
     try:
-        country_translate = translate_country(
+        country_translate = await translate_country (
             chat_id,
             user_dict[chat_id]['country']
-        ).strip(' .')
-        country_translate = country_translate.split()
-        country_translate = ' '.join(country_translate[1:])
+        )
         country_info = await country_get(country_translate)
-        if country_info:
-            await callback.message.answer(
-                text=f'{LEXICON['phone_list']}\n'
-                     f'Страна: {user_dict[chat_id]['country']}\n'
-                     f'Общий номер экстренных служб: '
-                     f'{country_info['shared_number']}\n'
-                     f'Полиция: {country_info['police']}\n'
-                     f'Скорая помощь: {country_info['ambulance']}\n'
-                     f'Пожарная служба: {country_info['fire_department']}\n'
-                     f'Регион: {country_info['region']}\n'
-                     f'Телефонный код: {country_info['phone_code']}\n'
-                     f'Дополнительная информация: '
-                     f'{country_info['information']}\n',
-                reply_markup=create_phone_list()
-            )
-        else:
-            await callback.message.answer(text=f'{LEXICON['phone_list_1']}\n',
-                                          reply_markup=create_phone_list())
+        await callback.message.answer(
+            text=f'{LEXICON['phone_list']}\n'
+                 f'Страна: {user_dict[chat_id]['country']}\n'
+                 f'Общий номер экстренных служб: '
+                 f'{country_info['shared_number']}\n'
+                 f'Полиция: {country_info['police']}\n'
+                 f'Скорая помощь: {country_info['ambulance']}\n'
+                 f'Пожарная служба: {country_info['fire_department']}\n'
+                 f'Регион: {country_info['region']}\n'
+                 f'Телефонный код: {country_info['phone_code']}\n'
+                 f'Дополнительная информация: '
+                 f'{country_info['information']}\n',
+            reply_markup=create_phone_list()
+        )
+        await state.set_state(FSMFillForm.fill_phone_list)
+        current_state = await state.get_state()
+        await callback.message.answer(f"Состояние есть гео: {current_state}")
     except Exception:
-        await callback.message.answer(text=LEXICON['not_location'],
-                                      reply_markup=create_main_menu(), )
-        await state.clear()
-    await state.set_state(FSMFillForm.fill_phone_list)
+        await callback.message.answer(text=f'{LEXICON['phone_list_1']}\n',
+                                      reply_markup=create_phone_list())
+        current_state = await state.get_state()
+        await callback.message.answer(f"Состояние нет гео: {current_state}")
+
     await callback.answer()
 
 
@@ -821,7 +830,7 @@ async def process_phone_list_help_menu(callback: CallbackQuery,
 # и SOS ПОМОЩ (шаг 7) из меню безопасности, предоставлять список
 # телефонов, и переводить бота в состояние ожидания
 # выбора действия (шаг 6.2)
-@router.callback_query(F.data.in_({'sos_phones', 'sos_help'}),
+@router.callback_query(F.data.in_({'sos_phones'}),
                        # StateFilter(default_state,
                        #             FSMFillForm.fill_choosing_type_help)
                        )
@@ -829,12 +838,10 @@ async def process_phone_list_security_menu(callback: CallbackQuery,
                                            state: FSMContext):
     chat_id = callback.message.chat.id
     try:
-        country_translate = translate_country(
+        country_translate = await translate_country(
             chat_id,
             user_dict[chat_id]['country']
-        ).strip(' .')
-        country_translate = country_translate.split()
-        country_translate = ' '.join(country_translate[1:])
+        )
         country_info = await country_get(country_translate)
         if country_info:
             await callback.message.answer(
@@ -858,6 +865,7 @@ async def process_phone_list_security_menu(callback: CallbackQuery,
         await callback.message.answer(text=LEXICON['not_location'],
                                       reply_markup=create_main_menu(), )
         await state.clear()
+        return
     await state.set_state(FSMFillForm.fill_phone_list_return_main)
     await callback.answer()
 
@@ -1030,18 +1038,15 @@ async def process_help_centers(callback: CallbackQuery,
                                state: FSMContext):
     chat_id = callback.message.chat.id
     try:
-        text_translate = translate_text(
-            chat_id,
-            user_dict[chat_id]['sity']
-        ).strip(' .')
-        text_translate = text_translate.split()
-        text_translate = ' '.join(text_translate[1:])
-        country_translate = translate_country(
+        country_translate = await translate_country(
             chat_id,
             user_dict[chat_id]['country']
-        ).strip(' .')
-        country_translate = country_translate.split()
-        country_translate = ' '.join(country_translate[1:])
+        )
+        text_translate = await translate_town(
+            chat_id,
+            user_dict[chat_id]['sity'],
+            country_translate
+        )
         town_info_help_center = await town_get_help_center(
             town=text_translate,
             country=country_translate
@@ -1068,12 +1073,14 @@ async def process_help_centers(callback: CallbackQuery,
             ))
         await state.set_state(FSMFillForm.fill_help_centers)
         await callback.answer()
-    except Exception as e:
-        print(e)
+    except TypeError:
         await callback.message.answer(text=LEXICON['data_development'],
-                                      reply_markup=create_type_help())
-        await state.clear()
-        await callback.answer()
+                                      reply_markup=create_main_menu_not_geo())
+    except Exception as e:
+        await callback.message.answer(text=LEXICON['repeat_main_menu'],
+                                      reply_markup=create_main_menu_not_geo())
+    await state.clear()
+    await callback.answer()
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки НАЙТИ УЧАСТОК ПОЛИЦИИ
@@ -1085,18 +1092,15 @@ async def process_all_police_stations(callback: CallbackQuery,
                                       state: FSMContext):
     chat_id = callback.message.chat.id
     try:
-        text_translate = translate_text(
-            chat_id,
-            user_dict[chat_id]['sity']
-        ).strip(' .')
-        text_translate = text_translate.split()
-        text_translate = ' '.join(text_translate[1:])
-        country_translate = translate_country(
+        country_translate = await translate_country(
             chat_id,
             user_dict[chat_id]['country']
-        ).strip(' .')
-        country_translate = country_translate.split()
-        country_translate = ' '.join(country_translate[1:])
+        )
+        text_translate = await translate_town(
+            chat_id,
+            user_dict[chat_id]['sity'],
+            country_translate
+        )
         town_info_police = await town_get_police(
             text_translate,
             country_translate
@@ -1120,13 +1124,14 @@ async def process_all_police_stations(callback: CallbackQuery,
                     LEXICON['show_all_police_city']
                 ))
         await state.set_state(FSMFillForm.fill_all_police_stations)
-        await callback.answer()
-    except Exception as e:
-        print(e)
+    except TypeError:
         await callback.message.answer(text=LEXICON['data_development'],
-                                      reply_markup=create_type_help())
-        await state.clear()
-        await callback.answer()
+                                      reply_markup=create_main_menu_not_geo())
+    except Exception as e:
+        await callback.message.answer(text=LEXICON['repeat_main_menu'],
+                                      reply_markup=create_main_menu_not_geo())
+    await state.clear()
+    await callback.answer()
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки СВОЙ ВОПРОС (шаг 8.1)
@@ -1184,18 +1189,15 @@ async def process_all_medical_center(callback: CallbackQuery,
                                      state: FSMContext):
     chat_id = callback.message.chat.id
     try:
-        text_translate = translate_text(
-            chat_id,
-            user_dict[chat_id]['sity']
-        ).strip(' .')
-        text_translate = text_translate.split()
-        text_translate = ' '.join(text_translate[1:])
-        country_translate = translate_country(
+        country_translate = await translate_country(
             chat_id,
             user_dict[chat_id]['country']
-        ).strip(' .')
-        country_translate = country_translate.split()
-        country_translate = ' '.join(country_translate[1:])
+        )
+        text_translate = await translate_town(
+            chat_id,
+            user_dict[chat_id]['sity'],
+            country_translate
+        )
         town_info_hospitals = await town_get_hospital(text_translate,
                                                       country_translate)
         if town_info_hospitals:
@@ -1221,11 +1223,14 @@ async def process_all_medical_center(callback: CallbackQuery,
                 ))
         await state.set_state(FSMFillForm.fill_all_medical_center)
         await callback.answer()
-    except Exception:
+    except TypeError:
         await callback.message.answer(text=LEXICON['data_development'],
-                                      reply_markup=create_type_help())
-        await state.clear()
-        await callback.answer()
+                                      reply_markup=create_main_menu_not_geo())
+    except Exception as e:
+        await callback.message.answer(text=LEXICON['repeat_main_menu'],
+                                      reply_markup=create_main_menu_not_geo())
+    await state.clear()
+    await callback.answer()
 
 
 # Этот хэндлер будет срабатывать на нажатие кнопки СВОЙ ВОПРОС (шаг 8.2)
