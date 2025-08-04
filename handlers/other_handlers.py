@@ -17,6 +17,5 @@ async def send_echo(message: Message):
     Args:
         message (Message): Входящее сообщение от пользователя.
     """
-    text: Optional[str] = message.text or "<пустое сообщение>"
     await message.answer(f'Не разобрал команду! '
-                         f'Повтори пожалуйста! {text}')
+                         f'Повтори пожалуйста!')
