@@ -3,12 +3,12 @@
 
 Содержит настройки и конфигурационные данные для проекта.
 """
+import asyncio
 import os
 from typing import Dict, Optional, Any
-import aiohttp
 # импортируем декоратор, который упрощает создание классов
 from dataclasses import dataclass
-
+import aiohttp
 from dotenv import load_dotenv
 import requests
 # импортируем класс для работы с переменными окружения
@@ -164,20 +164,45 @@ def get_coord(
 #         async with session.get(url, params=params) as resp:
 #             if resp.status == 200:
 #                 data = await resp.json()
-#                 return data.get("responseData", {}).get("translatedText", "Ошибка в ответе API")
+#                 return data.get(
+#                 "responseData",
+#                 {}
+#                 ).get("translatedText", "Ошибка в ответе API")
 #             else:
 #                 return f"Ошибка запроса, код: {resp.status}"
 
-async def translate_text(text: str, source_lang, target_lang) -> str:
+async def translate_text(text: str, source_lang: str, target_lang: str) -> str:
+    """
+    Асинхронно переводит текст с одного языка на другой через API MyMem.
+
+    Args:
+        text (str): Исходный текст для перевода.
+        source_lang (str): Код языка исходного текста
+         в формате ISO 639-1 (например, "en").
+        target_lang (str): Код языка, на который нужно перевести,
+         в формате ISO 639-1 (например, "ru").
+
+    Returns:
+        str: Переведённый текст, либо сообщение об ошибке в случае неудачи.
+    """
     url = API_MYMEM
     params = {
         "q": text,
         "langpair": f"{source_lang}|{target_lang}"
     }
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                return data.get("responseData", {}).get("translatedText", "Ошибка в ответе API")
-            else:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return data.get("responseData", {}).get(
+                        "translatedText",
+                        "Ошибка в ответе API"
+                    )
                 return f"Ошибка запроса, код: {resp.status}"
+    except aiohttp.ClientError as e:
+        return f"Ошибка сети: {e}"
+    except asyncio.TimeoutError:
+        return "Время ожидания запроса истекло"
+    except Exception as e:
+        return f"Неожиданная ошибка: {e}"
