@@ -774,8 +774,6 @@ async def process_choosing_type_help(callback: CallbackQuery,
                        StateFilter(FSMFillForm.fill_phone_list_return_main))
 async def process_back_to_main_menu(callback: CallbackQuery,
                                     state: FSMContext):
-    current_state = await state.get_state()
-    await callback.message.answer(f"Состояние есть гео: {current_state}")
     await callback.message.answer(text=LEXICON['type_help'],
                                   reply_markup=create_type_help(),)
     await state.clear()
@@ -792,8 +790,6 @@ async def process_back_to_main_menu(callback: CallbackQuery,
 async def process_phone_list_help_menu(callback: CallbackQuery,
                                        state: FSMContext):
     chat_id = callback.message.chat.id
-    current_state = await state.get_state()
-    await callback.message.answer(f"Состояние в начале: {current_state}")
     try:
         country_translate = await translate_country (
             chat_id,
@@ -815,14 +811,9 @@ async def process_phone_list_help_menu(callback: CallbackQuery,
             reply_markup=create_phone_list()
         )
         await state.set_state(FSMFillForm.fill_phone_list)
-        current_state = await state.get_state()
-        await callback.message.answer(f"Состояние есть гео: {current_state}")
     except Exception:
         await callback.message.answer(text=f'{LEXICON['phone_list_1']}\n',
                                       reply_markup=create_phone_list())
-        current_state = await state.get_state()
-        await callback.message.answer(f"Состояние нет гео: {current_state}")
-
     await callback.answer()
 
 
@@ -1064,6 +1055,8 @@ async def process_help_centers(callback: CallbackQuery,
                          f'Почта: {town['email']}\n'
                          f'Сайт: {town['website']}\n',
                 )
+        else:
+            await callback.message.answer(text=LEXICON['data_development'], )
         await callback.message.answer(
             text='-----',
             reply_markup=await create_all_centers(
@@ -1072,14 +1065,12 @@ async def process_help_centers(callback: CallbackQuery,
                 LEXICON['show_all_centers']
             ))
         await state.set_state(FSMFillForm.fill_help_centers)
-        await callback.answer()
     except TypeError:
         await callback.message.answer(text=LEXICON['data_development'],
                                       reply_markup=create_main_menu_not_geo())
     except Exception as e:
         await callback.message.answer(text=LEXICON['repeat_main_menu'],
                                       reply_markup=create_main_menu_not_geo())
-    await state.clear()
     await callback.answer()
 
 
@@ -1116,13 +1107,15 @@ async def process_all_police_stations(callback: CallbackQuery,
                          f'Телефон: {town['phone']}\n'
                          f'Название: {town['name']}\n\n',
                 )
-            await callback.message.answer(
-                text='-----',
-                reply_markup=await create_all_centers(
-                    chat_id,
-                    callback.message.chat.full_name,
-                    LEXICON['show_all_police_city']
-                ))
+        else:
+            await callback.message.answer(text=LEXICON['data_development'],)
+        await callback.message.answer(
+            text='-----',
+            reply_markup=await create_all_centers(
+                chat_id,
+                callback.message.chat.full_name,
+                LEXICON['show_all_police_city']
+            ))
         await state.set_state(FSMFillForm.fill_all_police_stations)
     except TypeError:
         await callback.message.answer(text=LEXICON['data_development'],
@@ -1130,7 +1123,6 @@ async def process_all_police_stations(callback: CallbackQuery,
     except Exception as e:
         await callback.message.answer(text=LEXICON['repeat_main_menu'],
                                       reply_markup=create_main_menu_not_geo())
-    await state.clear()
     await callback.answer()
 
 
@@ -1214,22 +1206,22 @@ async def process_all_medical_center(callback: CallbackQuery,
                          f'Почта: {town['email']}\n'
                          f'Сайт: {town['website']}\n',
                 )
-            await callback.message.answer(
-                text='-----',
-                reply_markup=await create_all_centers(
-                    chat_id,
-                    callback.message.chat.full_name,
-                    LEXICON['show_all_hospitals']
-                ))
+        else:
+            await callback.message.answer(text=LEXICON['data_development'], )
+        await callback.message.answer(
+            text='-----',
+            reply_markup=await create_all_centers(
+                chat_id,
+                callback.message.chat.full_name,
+                LEXICON['show_all_hospitals']
+            ))
         await state.set_state(FSMFillForm.fill_all_medical_center)
-        await callback.answer()
     except TypeError:
         await callback.message.answer(text=LEXICON['data_development'],
                                       reply_markup=create_main_menu_not_geo())
     except Exception as e:
         await callback.message.answer(text=LEXICON['repeat_main_menu'],
                                       reply_markup=create_main_menu_not_geo())
-    await state.clear()
     await callback.answer()
 
 
