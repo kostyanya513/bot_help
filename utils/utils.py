@@ -90,8 +90,8 @@ async def get_translated_city(user_id: int) -> str:
     Returns:
         str: Переведённое название города без пробелов и точек в конце.
     """
-    city_name, _ = get_user_location_data(user_id)
-    res = (await translate_town(user_id, city_name)).strip(' .')
+    city_name, country_name = await get_user_location_data(user_id)
+    res = await translate_town(user_id, city_name, country_name)
     return res
 
 
@@ -103,7 +103,7 @@ async def get_translated_country(user_id: int) -> str:
     Returns:
         str: Переведённое название страны без пробелов и точек в конце.
     """
-    _, country_name = get_user_location_data(user_id)
+    _, country_name = await get_user_location_data(user_id)
     res = (await translate_country(user_id, country_name)).strip(' .')
     return res
 
@@ -204,16 +204,9 @@ async def get_centers_data(
     return police, hospitals, help_centers
 
 
-def get_user_location_data(user_id: int) -> tuple[str, str | None]:
-    """
-    Получает название города и страны пользователя по user_id.
-    Args:
-        user_id (int): ID пользователя.
-    Returns:
-        tuple[str, str | None]: Кортеж с названием города и страны (если есть).
-    """
+async def get_user_location_data(user_id: int) -> tuple[str, str | None]:
     city_name = user_dict[user_id]['sity']
-    country_name = user_dict[user_id].get('country', None)
+    country_name = await translate_country(user_id, user_dict[user_id].get('country', None))
     return city_name, country_name
 
 
