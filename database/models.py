@@ -4,11 +4,15 @@
 from typing import Optional, List
 
 import asyncpg  # type: ignore
-
+import logging
 from states.states import FSMFillForm
 
 user_dict: dict[int, dict[str, str | int | bool]] = {}
-
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+        level=logging.INFO,  # Уровень логирования
+        format='%(filename)s:%(lineno)d #%(levelname)-8s '
+               '[%(asctime)s] - %(name)s - %(message)s')  # Формат логирования
 # Создаем словарь переменных
 data_variable: dict[str, str] = {'sity': 'Город',
                                  'country': 'Страна',
@@ -96,9 +100,9 @@ class Database:
         """
         try:
             self.pool = await asyncpg.create_pool(dsn=self.dsn)
-            print("✅ Подключение к базе данных успешно установлено")
+            logger.info("✅ Подключение к базе данных успешно установлено")
         except Exception as e:
-            print(f"❌ Ошибка подключения к базе: {e}")
+            logger.error(f"❌ Ошибка подключения к базе: {e}")
 
     async def close(self) -> None:
         """
@@ -106,7 +110,7 @@ class Database:
         """
         if self.pool:
             await self.pool.close()
-            print("✅ Подключение к базе данных закрыто")
+            logger.info("✅ Подключение к базе данных закрыто")
 
     async def fetch_record_by_country(
             self,
@@ -120,7 +124,7 @@ class Database:
             Список записей или None в случае ошибки.
         """
         if not self.pool:
-            print('❌ Пул соединений не инициализирован')
+            logger.info('❌ Пул соединений не инициализирован')
             return None
         try:
             async with self.pool.acquire() as conn:
@@ -129,7 +133,7 @@ class Database:
                 records = await conn.fetch(query, country_id)
                 return records
         except Exception as e:
-            print(f"❌ Ошибка выполнения запроса: {e}")
+            logger.error(f"❌ Ошибка выполнения запроса: {e}")
             return None
 
     async def fetch_record_by_town(self,
@@ -149,12 +153,12 @@ class Database:
             Список записей или None в случае ошибки.
         """
         if not self.pool:
-            print("❌ Пул соединений не инициализирован")
+            logger.error("❌ Пул соединений не инициализирован")
             return None
 
         allowed_services = {'police', 'hospitals', 'help_center'}
         if service_type not in allowed_services:
-            print(f"❌ Недопустимый тип сервиса: {service_type}")
+            logger.error(f"❌ Недопустимый тип сервиса: {service_type}")
             return None
 
         table_name = f"{service_type}_{country_id.lower()}"
@@ -168,12 +172,12 @@ class Database:
                 records = await conn.fetch(query, town_id)
                 return records
         except Exception as e:
-            print(f"❌ Ошибка выполнения запроса: {e}")
+            logger.error(f"❌ Ошибка выполнения запроса: {e}")
             return None
 
     async def fetch_record_country_cod(self,country_id: str):
         if not self.pool:
-            print("❌ Пул соединений не инициализирован")
+            logger.error("❌ Пул соединений не инициализирован")
             return None
         try:
             async with self.pool.acquire() as conn:
@@ -182,7 +186,7 @@ class Database:
                 record = await conn.fetch(query, country_id)
                 return record
         except Exception as e:
-            print(f"❌ Ошибка выполнения запроса: {e}")
+            logger.error(f"❌ Ошибка выполнения запроса: {e}")
             return None
 
 
