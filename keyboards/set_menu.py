@@ -666,7 +666,7 @@ async def create_all_centers(
     Returns:
         InlineKeyboardMarkup: Инлайн-клавиатура с кнопками.
     """
-    city_name, country_name = get_user_location_data(user_id=user_id)
+    city_name, country_name = await get_user_location_data(user_id=user_id)
     # Переводим название города
     city_translated = await get_translated_city(user_id=user_id)
     country_name = await get_translated_country(user_id=user_id)
@@ -675,10 +675,11 @@ async def create_all_centers(
         country_name
     )
     # Фильтруем непустые данные
-    centers_data = {}
-    centers_data['police'] = police or None
-    centers_data['hospitals'] = hospitals or None
-    centers_data['help_centers'] = help_centers or None
+    centers_data = {
+        'police': police or None,
+        'hospitals': hospitals or None,
+        'help_centers': help_centers or None,
+    }
     # Формируем заголовок статьи
     title = f"{LEXICON['all_places']}\nГород: {city_name}"
     author = user_author or "Автор"
