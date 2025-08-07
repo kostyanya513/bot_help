@@ -2,9 +2,8 @@
 Модуль models содержит классы и функции для работы с базой данных.
 """
 from typing import Optional, List
-
-import asyncpg  # type: ignore
 import logging
+import asyncpg  # type: ignore
 from states.states import FSMFillForm
 
 user_dict: dict[int, dict[str, str | int | bool]] = {}
@@ -102,7 +101,7 @@ class Database:
             self.pool = await asyncpg.create_pool(dsn=self.dsn)
             logger.info("✅ Подключение к базе данных успешно установлено")
         except Exception as e:
-            logger.error(f"❌ Ошибка подключения к базе: {e}")
+            logger.error("❌ Ошибка подключения к базе: %s", e)
 
     async def close(self) -> None:
         """
@@ -133,7 +132,7 @@ class Database:
                 records = await conn.fetch(query, country_id)
                 return records
         except Exception as e:
-            logger.error(f"❌ Ошибка выполнения запроса: {e}")
+            logger.error("❌ Ошибка выполнения запроса: %s", e)
             return None
 
     async def fetch_record_by_town(self,
@@ -158,7 +157,7 @@ class Database:
 
         allowed_services = {'police', 'hospitals', 'help_center'}
         if service_type not in allowed_services:
-            logger.error(f"❌ Недопустимый тип сервиса: {service_type}")
+            logger.error("❌ Недопустимый тип сервиса: %s", service_type)
             return None
 
         table_name = f"{service_type}_{country_id.lower()}"
@@ -172,10 +171,36 @@ class Database:
                 records = await conn.fetch(query, town_id)
                 return records
         except Exception as e:
-            logger.error(f"❌ Ошибка выполнения запроса: {e}")
+            logger.error("❌ Ошибка выполнения запроса: %s", e)
             return None
 
-    async def fetch_record_country_cod(self,country_id: str):
+    async def fetch_record_country_cod(
+            self,
+            country_id: str
+    ) -> Optional[List[asyncpg.Record]]:
+        """
+        Асинхронно извлекает список записей с кодами стран
+         из базы данных по названию страны.
+
+        Args:
+            country_id (str): Название или идентификатор страны
+             для поиска (поиск нечувствителен к регистру).
+
+        Returns:
+            Optional[List[asyncpg.Record]]: Список записей
+             с полем 'country_code',
+              если запрос успешен и записи найдены;
+            None, если пул соединений не инициализирован,
+             произошла ошибка запроса или запись не найдена.
+
+        Notes:
+            - Используется пул асинхронных соединений к базе данных.
+            - Поиск осуществляется с игнорированием регистра символов.
+            - В случае ошибки или отсутствия пула соединений
+             логируется сообщение через `logger.error`.
+            - Для обработки результата можно преобразовать
+             `asyncpg.Record` в словарь через `dict(record)`.
+        """
         if not self.pool:
             logger.error("❌ Пул соединений не инициализирован")
             return None
@@ -186,9 +211,8 @@ class Database:
                 record = await conn.fetch(query, country_id)
                 return record
         except Exception as e:
-            logger.error(f"❌ Ошибка выполнения запроса: {e}")
+            logger.error("❌ Ошибка выполнения запроса: %s", e)
             return None
-
 
     async def fetch_record_by_town_police(
             self,
