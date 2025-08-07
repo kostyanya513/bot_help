@@ -4,7 +4,7 @@
 Содержит функции для выполнения операций с базой данных,
 включая подключение, запросы и обработку результатов.
 """
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Optional, Any
 import logging  # Импортируем модуль для ведения журналов
 from config_data.config import DATABASE_URL
 from database.models import Database
@@ -15,6 +15,7 @@ logging.basicConfig(
         level=logging.INFO,  # Уровень логирования
         format='%(filename)s:%(lineno)d #%(levelname)-8s '
                '[%(asctime)s] - %(name)s - %(message)s')  # Формат логирования
+
 
 async def country_get(country: str) -> Union[Dict, str]:
     """
@@ -107,7 +108,22 @@ async def town_get_help_center(
         logger.error("Ошибка в обработчике town_get_help_center: %s", e)
         raise
 
-async def translate_country_cod(country):
+
+async def translate_country_cod(
+        country: str
+) -> Optional[List[Dict[str, Any]]]:
+    """
+        Асинхронно получает записи с кодами страны из БД
+         и преобразует их в список словарей.
+
+        Args:
+            country (str): Название или идентификатор страны для поиска.
+
+        Returns:
+            Optional[List[Dict[str, Any]]]: Список словарей с данными
+             записей из базы, если данные есть,
+              или None при отсутствии записей.
+        """
     try:
         records = await db.fetch_record_country_cod(country)
         list_of_dicts = [dict(record) for record in records]
