@@ -3,15 +3,13 @@
 
 Содержит функции для создания клавиатур меню бота.
 """
-from typing import Union
 from aiogram.types import (InlineKeyboardButton,
                            InlineKeyboardMarkup,
                            ReplyKeyboardMarkup,
                            KeyboardButton)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from database.models import (user_dict,
-                             data_variable)
+from database.models import data_variable
 from lexicon.lexicon_ru import (LEXICON_MAIN_MENU,
                                 LEXICON_RETURN_TO_MAIN_MENU,
                                 LEXICON_NEED_HELP,
@@ -702,27 +700,31 @@ async def create_all_centers(
     return kb_builder
 
 
-def create_variables(from_id: Union[int, str]) -> InlineKeyboardMarkup:
+def create_variables() -> InlineKeyboardMarkup:
     """
-    Генерирует клавиатуру списка переменных, указанных пользователем.
-    Args:
-        from_id (int | str): Идентификатор пользователя, по которому
-        берутся данные из user_dict.
+    Создаёт инлайн-клавиатуру с кнопками для выбора переменных.
+
+    Исключает из списка клавиш технические или служебные поля:
+    'latitude', 'longitude', 'info', 'country_cod'.
+
+    Клавиатура содержит кнопки с текстом из словаря `data_variable`
+     для каждого ключа, а также кнопку "Главное меню"
+      с callback_data 'return_main_menu'.
+
     Returns:
         InlineKeyboardMarkup: Объект инлайн-клавиатуры с кнопками
-        переменных и кнопкой "Главное меню".
+         переменных и кнопкой "Главное меню".
     """
     # Инициализируем билдер
     kb_builder = InlineKeyboardBuilder()
     # Инициализируем список для кнопок
     buttons: list[InlineKeyboardButton] = []
     # Заполняем список кнопками из аргументов
-    user_data = user_dict.get(from_id, {})
     for key, value in data_variable.items():
         if key in ['latitude', 'longitude', 'info', 'country_cod']:
             continue
         buttons.append(InlineKeyboardButton(
-                text=data_variable[key],
+                text=value,
                 callback_data=key
         ))
     # Распаковываем список с кнопками в билдер методом row c параметром width
