@@ -5,6 +5,7 @@ Telegraph API и обработкой данных пользователей.
 Здесь реализованы функции для перевода текста, создания статей на Telegraph,
 а также получения и обработки данных пользователей.
 """
+import logging
 from typing import (Union,
                     List,
                     Dict,
@@ -26,6 +27,11 @@ from database.models import (user_dict,
 
 # Инициализация переводчика (анонимный пользователь)
 translator = MyMemoryTranslate()
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+        level=logging.INFO,  # Уровень логирования
+        format='%(filename)s:%(lineno)d #%(levelname)-8s '
+               '[%(asctime)s] - %(name)s - %(message)s')  # Формат логирования
 
 
 async def translate_country(user_id: int, text: str):
@@ -47,8 +53,10 @@ async def translate_country(user_id: int, text: str):
         )
         return translation
     except KeyError:
+        logger.error("Ошибка: неверный user_id или отсутствует код страны.")
         return "Ошибка: неверный user_id или отсутствует код страны."
     except Exception as e:
+        logger.error("Ошибка перевода: %s", e)
         return f"Ошибка перевода: {e}"
 
 
@@ -63,8 +71,10 @@ async def translate_town(user_id: int, town: str, country: str):
         str: Переведённый текст или сообщение об ошибке.
     """
     try:
-        source_lang = user_dict[user_id]['country_cod']  # Язык пользователя
-        target_lang = await translate_country_cod(country)  # Язык, на который нужно перевести текст
+        # Язык пользователя
+        source_lang = user_dict[user_id]['country_cod']
+        # Язык, на который нужно перевести текст
+        target_lang = await translate_country_cod(country)
         target_lang = target_lang[0]['country_code']
         if target_lang == source_lang:
             # Если язык пользователя совпадает с целевым (русским),
@@ -77,8 +87,10 @@ async def translate_town(user_id: int, town: str, country: str):
         )
         return translation
     except KeyError:
+        logger.error("Ошибка: неверный user_id или отсутствует код страны.")
         return "Ошибка: неверный user_id или отсутствует код страны."
     except Exception as e:
+        logger.error("Ошибка перевода: %s", e)
         return f"Ошибка перевода: {e}"
 
 
@@ -205,8 +217,27 @@ async def get_centers_data(
 
 
 async def get_user_location_data(user_id: int) -> tuple[str, str | None]:
+    """
+    Получает данные о местоположении пользователя по его идентификатору.
+
+    Получает название города из словаря `user_dict` и переводит код страны
+     в полное название с помощью асинхронной функции `translate_country`.
+
+    Args:
+        user_id (int): Идентификатор пользователя.
+
+    Returns:
+        tuple[str, str | None]: Кортеж из двух элементов:
+            - city_name (str): Название города пользователя
+             (ключ 'sity' в `user_dict`).
+            - country_name (str | None): Название страны, либо None,
+             если страна не указана или перевод не найден.
+    """
     city_name = user_dict[user_id]['sity']
-    country_name = await translate_country(user_id, user_dict[user_id].get('country', None))
+    country_name = await translate_country(
+        user_id,
+        user_dict[user_id].get('country', None)
+    )
     return city_name, country_name
 
 
